@@ -26,9 +26,6 @@ body.t-evening{--bg1:#5A6E3A;--bg2:#34431F;--sky1:#E9875A;--sky2:#FBD29A;--hill1
 body.t-night{--bg1:#23384A;--bg2:#141F2C;--sky1:#0F1A33;--sky2:#2E4470;--hill1:#2E5A3A;--hill2:#1F412A;--sun:#F4F1D0}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-#g3d{display:none;position:absolute;inset:0;width:100%;height:100%}
-body.has3d #g3d{display:block}
-body.has3d #game{left:0;top:0;transform:none;width:100%;height:100%;border-radius:0;box-shadow:none;pointer-events:none}
 .aimg{display:inline-block;width:1.5em;height:1.5em;margin:-.25em;object-fit:contain;vertical-align:middle;pointer-events:none;-webkit-user-drag:none}
 .aimg.sm{width:30px;height:30px;margin:-4px}
 .aimg.md{width:44px;height:44px;margin:-6px}
@@ -430,7 +427,6 @@ h3.h{font-size:17px;font-weight:800;text-align:left;margin:10px 0 2px;color:var(
     <button class="sq wood" id="pauseBtn" aria-label="Duraklat"><svg width="20" height="20" viewBox="0 0 20 20" fill="#FFF6E0"><rect x="3" y="2" width="5" height="16" rx="2"/><rect x="12" y="2" width="5" height="16" rx="2"/></svg></button>
   </header>
   <div id="stage">
-    <canvas id="g3d" aria-hidden="true"></canvas>
     <canvas id="game" aria-label="Oyun alanı"></canvas>
     <div id="tut" hidden><p>Aşağı çek, nişan al, bırak</p><span class="hand">👆</span></div>
     <div class="mode-tag" id="modeTag" hidden></div>
@@ -651,23 +647,12 @@ const UNI={e:'🦄',n:'Tek boynuz',r:26,c:'#EBDDFF',k:'unicorn'};
 const TOP=LV.length-1;
 /* ---------- 3D art assets (rendered from art3d/) ---------- */
 const TOKEN_FRAME=1.42;                        // tokens are rendered with the physics circle at radius 1 inside ±1.42
-const castSrc=(k,sleep)=>`img/cast3d/${k}${sleep?'-sleep':''}.webp`;
-const tokenSrc=(k,sleep)=>`img/cast/${k}${sleep?'-sleep':''}.webp`;
+const castSrc=(k,sleep)=>`img/cast/${k}${sleep?'-sleep':''}.webp`;
 const aimg=(k,cls='',sleep=false)=>`<img class="aimg ${cls}" src="${castSrc(k,sleep)}" alt="" draggable="false">`;
 const EGG='<img class="eggi" src="img/ui/egg.webp" alt="yumurta" draggable="false">';
 const escH=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const IMG={};function loadImg(src){if(!IMG[src])IMG[src]=new Promise(res=>{const i=new Image();i.decoding='async';i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src});return IMG[src]}
-const CASTIMG={};async function loadCast(){await Promise.all([...LV,UNI].map(l=>loadImg(castSrc(l.k))))}
-async function loadTokens(){await Promise.all([...LV,UNI].flatMap(l=>[false,true].map(async sl=>{CASTIMG[l.k+(sl?'-sleep':'')]=await loadImg(tokenSrc(l.k,sl))})))}
-/* ---------- real-time 3D view (falls back to the 2D canvas if WebGL is unavailable) ---------- */
-let G3D=null,ovW=1,ovH=1;
-async function init3D(){
-  if(qs.has('2d'))return;
-  const mk=await new Promise(res=>{if(window.__make3D)return res(window.__make3D);window.addEventListener('g3d-ready',()=>res(window.__make3D),{once:true});setTimeout(()=>res(null),8000)});
-  if(!mk)return;
-  try{G3D=mk($('g3d'),{W,H,F,DANGER_Y,SL});G3D.setTod(TOD);G3D.setBiome(P.eq.theme);G3D.setSling(SK);document.body.classList.add('has3d')}
-  catch(e){console.warn('3D kullanılamıyor, 2D çizime dönülüyor',e);G3D=null}
-}
+const CASTIMG={};async function loadCast(){await Promise.all([...LV,UNI].flatMap(l=>[false,true].map(async sl=>{CASTIMG[l.k+(sl?'-sleep':'')]=await loadImg(castSrc(l.k,sl))})))}
 
 /* ---------- cosmetics ---------- */
 const THEMES={
@@ -831,9 +816,7 @@ const live=()=>state==='play';
 let lastSz='';
 function resize(force){
   const aw=stage.clientWidth-16,ah=stage.clientHeight-14;
-  const sz=aw+'x'+ah+'@'+(window.devicePixelRatio||1)+(G3D?'3d':'');if(aw<50||ah<50||(sz===lastSz&&!force))return;lastSz=sz;
-  if(G3D){dpr=Math.min(window.devicePixelRatio||1,3);ovW=stage.clientWidth;ovH=stage.clientHeight;scale=Math.max(.3,Math.min(aw/W,ah/H));
-    cv.width=Math.round(ovW*dpr);cv.height=Math.round(ovH*dpr);G3D.resize(ovW,ovH,window.devicePixelRatio||1);placeTut();return}
+  const sz=aw+'x'+ah+'@'+(window.devicePixelRatio||1);if(aw<50||ah<50||(sz===lastSz&&!force))return;lastSz=sz;
   scale=Math.max(.3,Math.min(aw/W,ah/H));dpr=Math.min(window.devicePixelRatio||1,3);
   cv.style.width=W*scale+'px';cv.style.height=H*scale+'px';
   cv.width=Math.round(W*scale*dpr);cv.height=Math.round(H*scale*dpr);
@@ -1235,7 +1218,7 @@ function startGame(m){ensureAudio();sfx.click();m=m||'normal';
   const tag=$('modeTag');tag.hidden=mode!=='daily'&&ranked;tag.textContent=(mod?`Günün tarlası: ${mod.n}`:'')+(ranked?'':(mod?'. ':'')+'Sıralamasız oyun (bağlantı yok)');
   if(mode==='daily')toast(`Günün tarlası #${DAYNO}: ${mod.n}. ${mod.d}.`);
   else if(!P.tips.swap&&tutDone){P.tips.swap=1;save();toast('İpucu: sıradaki hayvana dokunursan yer değiştirirler. İlki her oyunda bedava.')}}
-function toMenu(){if(G3D)G3D.clear();state='menu';setMode('normal');document.body.classList.add('chrome-off');bodies=[];parts=[];floats=[];cur=null;demoT=.4;$('modeTag').hidden=true;renderFarm();
+function toMenu(){state='menu';setMode('normal');document.body.classList.add('chrome-off');bodies=[];parts=[];floats=[];cur=null;demoT=.4;$('modeTag').hidden=true;renderFarm();
   ['over','pause','book','second','shop','quests','lb'].forEach(i=>show(i,false));show('menu',true);refreshMenu();placeTut()}
 function refreshMenu(){$('greet').textContent=({morning:'🌅 ',day:'☀️ ',evening:'🌇 ',night:'🌙 '}[TOD]||'')+TODINFO.greet;$('mBest').textContent=fmt(best);
   {const L=lvlOf(P.xp),a=xpAt(L),b=xpAt(L+1);$('mLvl').textContent=L;$('mLvlBar').style.width=(L>=MAXL?100:(P.xp-a)/(b-a)*100)+'%'}
@@ -1322,7 +1305,6 @@ function merge(a,b){
   n.vx=(a.vx*ma+b.vx*mb)/M*.55;n.vy=(a.vy*ma+b.vy*mb)/M*.55;n.age=Math.max(a.age,b.age,1);
   clampIn(n);pending.push(n);
   burst(n.x,n.y,[LV[nl].c,'#FFF8E7',LV[a.lv].c],12+nl*3,120+nl*20);
-  if(G3D&&nl>=8)G3D.punchAt(n.x,n.y,nl>=10?1.2:.8);
   if(live()){merges++;if(nl>mergeMax)mergeMax=nl;P.stats.merges++;if(nl===TOP)P.stats.whales++;if(nl>P.stats.madeMax){P.stats.madeMax=nl;checkAch()}else if(P.stats.merges===1)checkAch();
     qev('make',nl);qev('merge');sfx.merge(nl);vib(10+nl*3);gain(LV[nl].v,n.x,n.y);discover(nl);if(nl>=8)shake=Math.max(shake,.25)}
 }
@@ -1348,9 +1330,7 @@ function launch(){
   if(!tutDone){tutDone=true;store.set('tut','1');placeTut()}
   queued=next;next=pick();cur=null;loadT=.32;updHud(true);
 }
-const CONFETTI=['#FF6B6B','#FFD84A','#6FD1FF','#8FE388','#C39BFF','#FF9ECF','#FFFFFF'];
-function burst(x,y,cols,n,spd){
-  if(G3D){G3D.burst(x,y,cols.concat(CONFETTI),Math.min(110,Math.round(n*1.8)),.7+spd/320,n>40);return}for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=spd*(.3+Math.random()*.7);
+function burst(x,y,cols,n,spd){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=spd*(.3+Math.random()*.7);
   parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0,max:.5+Math.random()*.5,c:cols[i%cols.length],s:2+Math.random()*4})}}
 function updSwap(){const n=$('next');let t=n.querySelector('.swap');if(!t){t=document.createElement('span');t.className='swap';n.appendChild(t)}
   t.textContent='⇅';t.classList.toggle('paid',!freeSwap);n.title=freeSwap?'Dokun: yer değiştir (bedava)':'Dokun: yer değiştir (10 🥚)'}
@@ -1549,43 +1529,7 @@ function drawAmb(){
       ctx.beginPath();ctx.moveTo(a.x,a.y-s*2);ctx.lineTo(a.x+s*.5,a.y);ctx.lineTo(a.x,a.y+s*2);ctx.lineTo(a.x-s*.5,a.y);ctx.fill();
       ctx.beginPath();ctx.moveTo(a.x-s*2,a.y);ctx.lineTo(a.x,a.y+s*.5);ctx.lineTo(a.x+s*2,a.y);ctx.lineTo(a.x,a.y-s*.5);ctx.fill()}}
 }
-function draw3D(){
-  if(!(state==='play'||state==='paused'||state==='over'))return;
-  const c=cur?{lv:cur.lv,uni:cur.uni,r:cur.uni?UNI.r:LV[cur.lv].r}:null;
-  G3D.frame({time,bodies,keys:CASTK,cur:c,pull:aiming?pull:null,SL,showSling:true,shake});
-  const d=dpr;ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,ovW,ovH);
-  const Pj=(x,y,h)=>G3D.project(x,y,h||0);
-  // danger rope
-  const warn=dangerMax>0,pulse=.5+.5*Math.sin(time*14),a=Pj(F,DANGER_Y),b=Pj(W-F,DANGER_Y);
-  ctx.setLineDash([12,8]);ctx.lineWidth=4;ctx.lineCap='butt';ctx.strokeStyle=warn?`rgba(230,59,46,${.6+.4*pulse})`:'rgba(255,248,231,.7)';
-  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);
-  if(warn){ctx.font='800 17px "Baloo 2",sans-serif';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(255,246,224,.95)';
-    const s='Samanlıktan çıkar! '+Math.max(0,DANGER_T-dangerMax).toFixed(1);ctx.strokeText(s,(a.x+b.x)/2,a.y-10);ctx.fillStyle='#D12F22';ctx.fillText(s,(a.x+b.x)/2,a.y-10)}
-  // aim preview (same physics as the game, drawn in perspective)
-  if(aiming&&cur&&pull&&pull.power>0){const l=cur.uni?UNI:LV[cur.lv];let x=SL.x,y=SL.y,vx=pull.ux*pull.power*maxSpeed,vy=pull.uy*pull.power*maxSpeed;const h=1/60;
-    for(let i=0;i<300;i++){x+=vx*h;y+=vy*h;const f=Math.exp(-damp*h);vx*=f;vy*=f;const sp=Math.hypot(vx,vy);if(sp<20)break;const k=Math.max(0,sp-coul*h)/sp;vx*=k;vy*=k;
-      if(x<F+l.r){x=F+l.r;vx=-vx*REST_WALL}if(x>W-F-l.r){x=W-F-l.r;vx=-vx*REST_WALL}if(y<F+l.r){y=F+l.r;vy=-vy*REST_WALL}if(y>H-F-l.r){y=H-F-l.r;vy=-vy*REST_WALL}
-      if(i%4===0){const q=Pj(x,y,4),ppu=G3D.pxPerUnit(x,y);ctx.fillStyle=`rgba(255,248,231,${Math.max(.15,.95-i/280)})`;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(1.6,(3.6-i/120)*ppu),0,7);ctx.fill()}}
-    const q=Pj(x,y),ppu=G3D.pxPerUnit(x,y);ctx.setLineDash([6,6]);ctx.strokeStyle='rgba(255,248,231,.85)';ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(q.x,q.y,l.r*ppu,l.r*ppu*.62,0,0,7);ctx.stroke();ctx.setLineDash([]);
-    const pb=Pj(W-F-50,H-F-16),bw=64;ctx.fillStyle='rgba(60,35,10,.5)';rr(pb.x-bw/2,pb.y,bw,10,5);ctx.fill();
-    ctx.fillStyle=pull.power>.85?'#E63B2E':pull.power>.5?'#F2C14E':'#FFF6E0';rr(pb.x-bw/2,pb.y,bw*pull.power,10,5);ctx.fill()}
-  // wind
-  if(windX&&Math.abs(windX)>15){const q=Pj(W/2,F+30),dir=Math.sign(windX),k=Math.min(1,Math.abs(windX)/120);ctx.globalAlpha=.4+.5*k;ctx.strokeStyle='#FFF6E0';ctx.lineWidth=3;ctx.lineCap='round';
-    for(let i=0;i<3;i++){const y=q.y+i*8;ctx.beginPath();ctx.moveTo(q.x-26*dir,y);ctx.lineTo(q.x+(16+i*6)*dir*k,y);ctx.stroke()}ctx.globalAlpha=1}
-  // cosmetic trails and ambient snow/leaves (screen-projected)
-  if(TR.k==='ribbon')for(const bb of bodies)if(bb.hist&&bb.hist.length>1)drawRibbon(ctx,TR,bb.hist.map(p=>{const q=Pj(p.x,p.y,bb.r*.6);return{x:q.x,y:q.y,a:Math.max(0,1-(time-p.t)/.35)}}),bb.r*.9*G3D.pxPerUnit(bb.x,bb.y),time);
-  for(const p of parts){const q=Pj(p.x,p.y,18),ppu=G3D.pxPerUnit(p.x,p.y);ctx.globalAlpha=1-p.life/p.max;shape(ctx,p.k,q.x,q.y,p.s*ppu,p.c,p.rot,Array.isArray(p.g)?p.g.map(seg=>seg.map(([sx,sy])=>{const r=Pj(sx,sy,18);return[r.x,r.y]})):p.g)}
-  for(const am of amb){if(am.k==='fly')continue;const q=Pj(am.x,am.y,60);ctx.globalAlpha=.85;if(am.k==='snow'){ctx.fillStyle='#FFFFFF';ctx.beginPath();ctx.arc(q.x,q.y,1.6*am.s+.8,0,7);ctx.fill()}
-    else if(am.k==='leaf'||am.k==='petal'){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(am.p);ctx.fillStyle=am.k==='leaf'?'#E0662C':'rgba(230,215,255,.9)';ctx.beginPath();ctx.ellipse(0,0,5,2.6,0,0,7);ctx.fill();ctx.restore()}}
-  // floating score text
-  ctx.globalAlpha=1;ctx.textAlign='center';
-  for(const f of floats){const dur=f.huge?1.4:1.1,al=Math.min(1,(1-f.t/dur)*2);ctx.globalAlpha=al;const q=f.huge?{x:ovW/2,y:ovH*.36}:Pj(f.x,f.y,50);
-    const sz=f.huge?38*(1+.4*Math.max(0,.15-f.t)/.15):(f.big?25:20);ctx.font=`800 ${sz}px "Baloo 2",sans-serif`;const y=q.y-f.t*(f.huge?20:46);
-    ctx.lineWidth=f.huge?7:4;ctx.lineJoin='round';ctx.strokeStyle='rgba(43,33,24,.85)';ctx.strokeText(f.txt,q.x,y);ctx.fillStyle=f.big?'#FFE45E':'#FFF8E7';ctx.fillText(f.txt,q.x,y)}
-  ctx.globalAlpha=1;
-}
 function draw(){
-  if(G3D){draw3D();return}
   const k=scale*dpr;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
   if(!bg)return;ctx.drawImage(bg,0,0);
   const sx=shake>0?(Math.random()-.5)*shake*14:0,sy=shake>0?(Math.random()-.5)*shake*14:0;
@@ -1730,8 +1674,7 @@ function buy(kind,id){
   else sfx.click();
   P.eq[kind]=id;save();
   TH=THEMES[P.eq.theme];SK=SLINGS[P.eq.sling];TR=TRAILS[P.eq.trail];
-  if(kind==='theme'){if(G3D)G3D.setBiome(P.eq.theme);else{resize(true);loadPen()}initAmb()}
-  if(kind==='sling'&&G3D)G3D.setSling(SK);
+  if(kind==='theme'){resize(true);initAmb();loadPen()}
   renderShop();
 }
 document.querySelectorAll('#shopTabs button').forEach(b=>b.onclick=()=>{shopTab=b.dataset.t;sfx.click();renderShop()});
@@ -1763,7 +1706,6 @@ function nextToast(){const t=$('toast'),m=tq.shift();if(!m){tBusy=false;t.classL
   t.classList.toggle('low',[...document.querySelectorAll('section.screen')].some(x=>!x.hidden&&x.id!=='splash'));void t.offsetWidth;t.classList.add('show');setTimeout(nextToast,tq.length?1700:2500)}
 function placeTut(){
   const t=$('tut'),on=state==='play'&&!tutDone;t.hidden=!on;if(!on)return;
-  if(G3D){const q=G3D.project(SL.x,SL.y-150);t.style.left=q.x+'px';t.style.top=q.y+'px';return}
   const r=cv.getBoundingClientRect(),s=stage.getBoundingClientRect();
   t.style.left=(r.left-s.left+SL.x*scale)+'px';t.style.top=(r.top-s.top+(SL.y-175)*scale)+'px';
 }
@@ -1852,7 +1794,7 @@ async function boot(){
   const fontP=document.fonts&&document.fonts.load?Promise.race([document.fonts.load('800 20px "Baloo 2"'),new Promise(r=>setTimeout(r,2500))]):Promise.resolve();
   await fontP.catch(()=>{});target=.35;
   // the walking animal on the splash now reflects real loading: characters, then the pen
-  await Promise.all([loadCast(),init3D()]);target=.7;if(!G3D){await loadTokens();await loadPen()}
+  await loadCast();target=.7;await loadPen();
   resize(true);target=1;
 }
 $('splash').addEventListener('click',()=>{
@@ -1871,14 +1813,10 @@ function frame(now){const dt=Math.min(1/30,(now-last)/1000);last=now;if(!documen
 window.addEventListener('resize',()=>resize());if(window.ResizeObserver)new ResizeObserver(()=>resize()).observe(stage);
 if(window.visualViewport)visualViewport.addEventListener('resize',()=>resize());
 window.addEventListener('orientationchange',()=>setTimeout(()=>resize(),200));
-if(/debug/.test(location.search))window.__sapan={biome:id=>{if(G3D)G3D.setBiome(id)},info:()=>G3D?Object.assign({},G3D.renderer.info.render,{geos:G3D.renderer.info.memory.geometries}):null,spawn:(lv,x,y)=>{const b=mk(lv,x,y);b.pop=1;b.age=5;bodies.push(b);return b.id},merge:(x,y,lv)=>{if(G3D){G3D.burst(x,y,[LV[lv].c].concat(CONFETTI),90,1.2,true);G3D.punchAt(x,y,1)}},dbg:()=>({LOG,score,merges,sess,state,usedSecond}),forceEnd:()=>endRun(),revive:()=>revive(),P,endRun:()=>{score=1234;maxLv=4;merges=17;launched=40;endRun()},add:n=>addEggs(n),state:()=>state};
+if(/debug/.test(location.search))window.__sapan={dbg:()=>({LOG,score,merges,sess,state,usedSecond}),forceEnd:()=>endRun(),revive:()=>revive(),P,endRun:()=>{score=1234;maxLv=4;merges=17;launched=40;endRun()},add:n=>addEggs(n),state:()=>state};
 ensureQuests();initAmb();setMute();renderStrip();refreshMenu();boot();requestAnimationFrame(frame);
 if(!NATIVE&&'serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
-</script>
-<script type="module">
-import { create3D } from './js/game3d.js';
-window.__make3D = create3D; window.dispatchEvent(new Event('g3d-ready'));
 </script>
 </body>
 </html>
