@@ -31,7 +31,9 @@ body.t-night{--bg1:#23384A;--bg2:#141F2C;--sky1:#0F1A33;--sky2:#2E4470;--hill1:#
 .aimg.md{width:44px;height:44px;margin:-6px}
 .aimg.lg{width:84px;height:84px;margin:-10px}
 .aimg.sil{filter:brightness(0);opacity:.22}
-.aimg.nx{width:60px;height:60px;margin:-7px}
+/* next-animal bubble: a circular window that clips the token and keeps it centred */
+.nxw{position:absolute;inset:0;border-radius:50%;overflow:hidden;display:grid;place-items:center}
+.aimg.nx{width:106%;height:106%;max-width:none;margin:0;flex:none;transform:translateY(-3%)}
 .aimg.ticon{width:34px;height:34px;margin:-8px 4px -8px -6px}
 .eggi{display:inline-block;width:1.15em;height:1.15em;vertical-align:-.22em;margin:0 .05em;object-fit:contain}
 .uico{width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 2px 0 rgba(0,0,0,.2))}
@@ -74,7 +76,7 @@ footer{flex:none;display:flex;justify-content:center;gap:3px;padding:8px 10px 10
 .slot.fresh i{animation:glow 1.4s ease-out 2}
 @keyframes glow{0%{box-shadow:0 0 0 0 rgba(242,193,78,.9)}100%{box-shadow:0 0 0 14px rgba(242,193,78,0)}}
 
-#toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:70;left:0;right:0;margin:0 auto;width:max-content;transform:translateY(-30px) rotate(-2deg);opacity:0;border-radius:14px;padding:6px 18px 7px;font-weight:700;font-size:16px;text-align:center;max-width:88%;pointer-events:none;transition:opacity .25s,transform .35s cubic-bezier(.3,1.5,.5,1);color:var(--cream);text-shadow:0 1px 0 var(--wood-dd)}
+#toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 86px);z-index:70;left:0;right:0;margin:0 auto;width:max-content;transform:translateY(-30px) rotate(-2deg);opacity:0;border-radius:14px;padding:6px 18px 7px;font-weight:700;font-size:16px;text-align:center;max-width:min(88%,330px);pointer-events:none;transition:opacity .25s,transform .35s cubic-bezier(.3,1.5,.5,1);color:var(--cream);text-shadow:0 1px 0 var(--wood-dd)}
 #toast.show{opacity:1;transform:translateY(0) rotate(-1deg)}
 #toast.low{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateY(30px) rotate(-2deg)}
 #toast.low.show{transform:translateY(0) rotate(-1deg)}
@@ -410,9 +412,9 @@ h3.h{font-size:17px;font-weight:800;text-align:left;margin:10px 0 2px;color:var(
 .cd svg{width:100%;height:100%;transform:rotate(-90deg)}
 .cd b{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;font-weight:800;color:var(--barn)}
 .next .dot{position:relative;cursor:pointer}
-.swap{position:absolute;right:-7px;bottom:-5px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;line-height:1;background:#6FB358;color:#fff;border:2px solid var(--wood-d);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.swap{position:absolute;z-index:2;right:-10px;bottom:-8px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;line-height:1;background:#6FB358;color:#fff;border:2px solid var(--wood-d);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 .swap.paid{background:var(--hay);color:var(--ink)}
-#ad{z-index:45;background:rgba(10,14,8,.88)}
+#ad{z-index:45;background:rgba(10,14,8,.97)}
 .adbox{margin:14px 0 4px;border-radius:16px;background:repeating-linear-gradient(45deg,#EFDDB8 0 12px,#F7EBD2 12px 24px);padding:18px 12px;font-size:15px;line-height:1.35}
 .mode-tag{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);z-index:3;border-radius:12px;padding:1px 12px 3px;font-weight:800;font-size:13px;background:rgba(0,0,0,.35);white-space:nowrap;pointer-events:none}
 .mode-tag[hidden]{display:none}
@@ -423,7 +425,7 @@ h3.h{font-size:17px;font-weight:800;text-align:left;margin:10px 0 2px;color:var(
 <div id="app">
   <header>
     <div class="plaque wood nails"><b id="score">0</b><small>Rekor <span id="best">0</span></small></div>
-    <div class="next"><div class="dot" id="next" role="button" aria-label="Sıradaki hayvanla değiştir"></div>sıradaki</div>
+    <div class="next"><div class="dot" id="next" role="button" aria-label="Sıradaki hayvanla değiştir"><span class="nxw"><img class="aimg nx" id="nxImg" src="img/cast/chick.webp" alt="" draggable="false"></span></div>sıradaki</div>
     <button class="sq wood" id="pauseBtn" aria-label="Duraklat"><svg width="20" height="20" viewBox="0 0 20 20" fill="#FFF6E0"><rect x="3" y="2" width="5" height="16" rx="2"/><rect x="12" y="2" width="5" height="16" rx="2"/></svg></button>
   </header>
   <div id="stage">
@@ -1211,14 +1213,14 @@ function reset(){
   cur=pick();next=pick();loadT=0;aiming=false;pull=null;updHud(true);updSwap();
 }
 function show(id,on){$(id).hidden=!on}
-function startGame(m){ensureAudio();sfx.click();m=m||'normal';
+function startGame(m){ensureAudio();sfx.click();m=m||'normal';setTimeout(toastPos,0);
   sess=sessQ[m]&&Date.now()-sessQ[m].at<2*3600e3?sessQ[m]:null;sessQ[m]=null;ranked=!!sess;setTimeout(()=>prefetch(m),2500);
   setMode(m);reset();state='play';document.body.classList.remove('chrome-off');
   ['menu','over','pause','book','second','shop','quests','lb'].forEach(i=>show(i,false));placeTut();
   const tag=$('modeTag');tag.hidden=mode!=='daily'&&ranked;tag.textContent=(mod?`Günün tarlası: ${mod.n}`:'')+(ranked?'':(mod?'. ':'')+'Sıralamasız oyun (bağlantı yok)');
   if(mode==='daily')toast(`Günün tarlası #${DAYNO}: ${mod.n}. ${mod.d}.`);
   else if(!P.tips.swap&&tutDone){P.tips.swap=1;save();toast('İpucu: sıradaki hayvana dokunursan yer değiştirirler. İlki her oyunda bedava.')}}
-function toMenu(){state='menu';setMode('normal');document.body.classList.add('chrome-off');bodies=[];parts=[];floats=[];cur=null;demoT=.4;$('modeTag').hidden=true;renderFarm();
+function toMenu(){state='menu';toastPos();setMode('normal');document.body.classList.add('chrome-off');bodies=[];parts=[];floats=[];cur=null;demoT=.4;$('modeTag').hidden=true;renderFarm();
   ['over','pause','book','second','shop','quests','lb'].forEach(i=>show(i,false));show('menu',true);refreshMenu();placeTut()}
 function refreshMenu(){$('greet').textContent=({morning:'🌅 ',day:'☀️ ',evening:'🌇 ',night:'🌙 '}[TOD]||'')+TODINFO.greet;$('mBest').textContent=fmt(best);
   {const L=lvlOf(P.xp),a=xpAt(L),b=xpAt(L+1);$('mLvl').textContent=L;$('mLvlBar').style.width=(L>=MAXL?100:(P.xp-a)/(b-a)*100)+'%'}
@@ -1226,7 +1228,7 @@ function refreshMenu(){$('greet').textContent=({morning:'🌅 ',day:'☀️ ',ev
   $('dMod').textContent=P.daily.date===TODAY?`${TODAY_MOD.n}. Bugünkü en iyin: ${fmt(P.daily.best)}`:`Bugün: ${TODAY_MOD.n}. Herkes aynı tarlada!`;
   refreshEggs();badge();prefetch('normal');setTimeout(()=>prefetch('daily'),2300)}
 function endRun(){
-  state='over';aiming=false;pull=null;sfx.over();vib([60,40,60]);placeTut();
+  state='over';toastPos();aiming=false;pull=null;sfx.over();vib([60,40,60]);placeTut();
   if(!usedSecond&&bodies.length>2)setTimeout(showSecond,550);else setTimeout(finish,650);
 }
 let cdTimer=null;
@@ -1243,7 +1245,7 @@ function revive(){show('second',false);usedSecond=true;
   for(const b of bodies)if(b.y>H*.45){b.dead=true;burst(b.x,b.y,[b.uni?UNI.c:LV[b.lv].c,'#FFF8E7'],10,180)}
   P.stats.revives++;LOG.push(['r',tt(),bodies.filter(b=>b.dead).map(b=>b.uni?-1:b.lv)]);
   bodies=bodies.filter(b=>!b.dead);for(const b of bodies)b.danger=0;dangerMax=0;
-  state='play';sfx.magic();toast('İkinci şans! Ağıl ferahladı.');if(!cur&&queued){cur=queued;queued=null;updHud(true)}}
+  state='play';toastPos();sfx.magic();toast('İkinci şans! Ağıl ferahladı.');if(!cur&&queued){cur=queued;queued=null;updHud(true)}}
 $('scAd').onclick=()=>rewarded('ikinci-sans',revive);
 $('scEgg').onclick=()=>{if(P.eggs<40)return;P.eggs-=40;save();refreshEggs();revive()};
 $('scNo').onclick=()=>{show('second',false);finish()};
@@ -1562,7 +1564,7 @@ let shownScore=0;
 function updHud(newNext){
   const s=$('score');if(score!==shownScore&&shownScore>=0){s.classList.remove('bump');void s.offsetWidth;s.classList.add('bump')}shownScore=score;
   s.textContent=fmt(score);$('best').textContent=fmt(Math.max(best,score));
-  if(next){const l=next.uni?UNI:LV[next.lv],n=$('next');let im=n.querySelector('.aimg');if(!im){n.textContent='';n.insertAdjacentHTML('afterbegin',aimg(l.k,'nx'));im=n.querySelector('.aimg')}im.src=castSrc(l.k);n.style.background='';
+  if(next){const l=next.uni?UNI:LV[next.lv],n=$('next');const im=$('nxImg'),src=castSrc(l.k);if(!im.src.endsWith(src))im.src=src;n.style.background='';
     if(newNext){n.classList.remove('in');void n.offsetWidth;n.classList.add('in')}}
 }
 function renderStrip(){
@@ -1700,10 +1702,12 @@ function renderQuests(){
 }
 
 const tq=[];let tBusy=false;
+// a toast that is already on screen follows the game state (top during play, bottom over menus/panels)
+function toastPos(){$('toast').classList.toggle('low',state!=='play')}
 function toast(m,k){if(tq.some(x=>x.m===m))return;tq.push({m,k});if(!tBusy)nextToast()}
 function nextToast(){const t=$('toast'),m=tq.shift();if(!m){tBusy=false;t.classList.remove('show');return}
   tBusy=true;t.innerHTML=(m.k?aimg(m.k,'ticon'):'')+escH(m.m).replace(/🥚/g,EGG);t.classList.remove('show');
-  t.classList.toggle('low',[...document.querySelectorAll('section.screen')].some(x=>!x.hidden&&x.id!=='splash'));void t.offsetWidth;t.classList.add('show');setTimeout(nextToast,tq.length?1700:2500)}
+  toastPos();void t.offsetWidth;t.classList.add('show');setTimeout(nextToast,tq.length?1700:2500)}
 function placeTut(){
   const t=$('tut'),on=state==='play'&&!tutDone;t.hidden=!on;if(!on)return;
   const r=cv.getBoundingClientRect(),s=stage.getBoundingClientRect();
@@ -1733,9 +1737,9 @@ window.addEventListener('pointerup',release);window.addEventListener('pointercan
 document.addEventListener('touchmove',e=>{if(aiming)e.preventDefault()},{passive:false});
 document.addEventListener('gesturestart',e=>e.preventDefault());
 
-function pauseGame(){if(state!=='play')return;state='paused';aiming=false;pull=null;sfx.click();show('pause',true)}
+function pauseGame(){if(state!=='play')return;state='paused';toastPos();aiming=false;pull=null;sfx.click();show('pause',true)}
 $('pauseBtn').onclick=pauseGame;
-$('resume').onclick=()=>{sfx.click();show('pause',false);state='play'};
+$('resume').onclick=()=>{sfx.click();show('pause',false);state='play';toastPos()};
 $('restart').onclick=()=>startGame(mode);$('again').onclick=()=>startGame(mode);$('play').onclick=()=>startGame('normal');
 $('dailyBtn').onclick=()=>startGame('daily');
 $('toMenu').onclick=()=>{sfx.click();toMenu()};$('overMenu').onclick=()=>{sfx.click();toMenu()};
